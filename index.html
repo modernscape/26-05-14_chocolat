@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>〈1〉dot riria</title>
+    <title>dot chocolat</title>
     <!-- <script src="../three.js_r73/build/three.js"></script> -->
     <script src="./js/build/three90.min.js"></script>
     <!-- Three.js用ライブラリ -->
@@ -213,22 +213,22 @@
 
         const materials = [
           new THREE.MeshBasicMaterial({
-            map: loader.load("./img/riria_01.jpg"),
+            map: loader.load("./img/chocolat_1.png"),
           }),
           new THREE.MeshBasicMaterial({
-            map: loader.load("./img/riria_02.jpg"),
+            map: loader.load("./img/chocolat_2.png"),
           }),
           new THREE.MeshBasicMaterial({
-            map: loader.load("./img/riria_03.jpg"),
+            map: loader.load("./img/chocolat_3.png"),
           }),
           new THREE.MeshBasicMaterial({
-            map: loader.load("./img/riria_04.jpg"),
+            map: loader.load("./img/chocolat_4.png"),
           }),
           new THREE.MeshBasicMaterial({
-            map: loader.load("./img/riria_05.jpg"),
+            map: loader.load("./img/chocolat_5.png"),
           }),
           new THREE.MeshBasicMaterial({
-            map: loader.load("./img/riria_06.jpg"),
+            map: loader.load("./img/chocolat_6.png"),
           }),
         ]
 
@@ -247,7 +247,7 @@
 
         // 材質オブジェクトの宣言と生成
         // var material = new THREE.MeshLambertMaterial({
-        //   map: new THREE.TextureLoader().load('img/riria_01.jpg'),
+        //   map: new THREE.TextureLoader().load('img/chocolat_01.jpg'),
         // });
 
         ///////////////立方体オブジェクトの準備//////////////////
@@ -282,7 +282,7 @@
         var y = cube.rotation.y
         var z = cube.rotation.z
 
-        var add = -0.015
+        var add = -0.005
 
         cube.rotation.set(x, y + add, z)
 
