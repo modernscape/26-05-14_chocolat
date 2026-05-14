@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>〈2〉pixel riria</title>
+    <script src="./js/build/three.js"></script>
+    <script src="./js/controls/TrackballControls.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      div#canvas-frame {
+        width: 500px; /* 横幅 */
+        height: 500px; /* 縦幅 */
+        overflow: hidden;
+        position: relative;
+        z-index: 2;
+      }
+      html {
+        height: 100%;
+      }
+      body {
+        background-image: url("img/sky.jpg");
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-color: black;
+        background-position: center;
+        height: 100%;
+      }
+
+      #back-filter {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+      }
+      .original-css-backdropFilter {
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(5px) brightness(0.1) opacity(50%) saturate(62%);
+      }
+    </style>
+    <script>
+      window.addEventListener("load", function () {
+        threeStart()
+        resize()
+      })
+
+      window.addEventListener("resize", function () {
+        resize()
+      })
+
+      function resize() {
+        var w = document.documentElement.clientWidth
+        var h = document.documentElement.clientHeight
+
+        if (w > h) {
+          canvasFrame.style.width = document.documentElement.clientHeight + "px"
+          canvasFrame.style.height =
+            document.documentElement.clientHeight + "px"
+          canvasFrame.style.left = (w - h) / 2 + "px"
+        } else {
+          canvasFrame.style.width = document.documentElement.clientWidth + "px"
+          canvasFrame.style.height = document.documentElement.clientWidth + "px"
+          canvasFrame.style.top = (h - w) / 2 + "px"
+        }
+
+        backFilter.style.height = h
+
+        renderer.setSize(canvasFrame.clientWidth, canvasFrame.clientHeight)
+      }
+
+      var canvasFram, renderer, scene, backFilter
+      function threeStart() {
+        initThree() //Three.js初期化関数の実行
+        initLight() //光源初期化関数の実行
+        initObject() //オブジェクト初期化関数の実行
+        initCamera() //カメラ初期化関数の実行
+        loop() //無限ループ関数の実行
+      }
+      function initThree() {
+        //キャンバスフレームDOM要素の取得
+        canvasFrame = document.getElementById("canvas-frame")
+        backFilter = document.getElementById("back-filter")
+
+        //レンダラーオブジェクトの生成
+        renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          alpha: true,
+        })
+
+        if (!renderer) alert("Three.js の初期化に失敗しました")
+        //レンダラーのサイズの設定
+        renderer.setSize(canvasFrame.clientWidth, canvasFrame.clientHeight)
+        //キャンバスフレームDOM要素にcanvas要素を追加
+        canvasFrame.appendChild(renderer.domElement)
+
+        //レンダラークリアーカラーの設定
+        renderer.setClearColor(0x000000, 0.0)
+
+        //シーンオブジェクトの生成
+        scene = new THREE.Scene()
+      }
+
+      var camera, trackball //カメラオブジェクト
+      function initCamera() {
+        //カメラオブジェクトの生成
+        camera = new THREE.PerspectiveCamera(
+          45,
+          canvasFrame.clientWidth / canvasFrame.clientHeight,
+          1,
+          10000,
+        )
+        //カメラの位置の設定
+        camera.position.set(0, 150, 500)
+        //カメラの上ベクトルの設定
+        camera.up.set(0, 1, 0)
+        //カメラの中心位置ベクトルの設定
+        camera.lookAt({ x: 0, y: 0, z: 0 }) //トラックボール利用時は自動的に無効
+
+        trackball = new THREE.TrackballControls(camera, canvasFrame)
+        //トラックボール動作範囲のサイズとオフセットの設定
+        trackball.screen.width = canvasFrame.clientWidth //横幅
+        trackball.screen.height = canvasFrame.clientHeight //縦幅
+        trackball.screen.offsetLeft = canvasFrame.getBoundingClientRect().left //左オフセット
+        trackball.screen.offsetTop = canvasFrame.getBoundingClientRect().top //右オフセット
+
+        //トラックボールの回転無効化と回転速度の設定
+        trackball.noRotate = false
+        trackball.rotateSpeed = 4.0
+
+        //トラックボールの拡大無効化と拡大速度の設定
+        trackball.noZoom = false
+        trackball.zoomSpeed = 4.0
+
+        //トラックボールのカメラ中心移動の無効化と中心速度の設定
+        trackball.noPan = false
+        trackball.panSpeed = 1.0
+        trackball.target = new THREE.Vector3(0, 0, 0)
+
+        //トラックボールのスタティックムーブの有効化
+        trackball.staticMoving = true
+        //トラックボールのダイナミックムーブ時の減衰定数
+        trackball.dynamicDampingFactor = 0.3
+      }
+      var axis, divisions, plane, showFlags, colors
+
+      const divisionCount = 20 // 1辺の分割数
+      const L = 200 // 画像の大きさ
+
+      function initObject() {
+        // axis = new THREE.AxisHelper(200);
+        // axis.position.set(0, 0, 0);
+        // scene.add(axis);
+
+        const masuCount = divisionCount * divisionCount
+        var positions = new Float32Array(masuCount * 3 * 4) // 1マスに頂点4個
+        colors = new Float32Array(masuCount * 6 * 3) // 1マスに頂点6個
+        var uvs = new Float32Array(masuCount * 2 * 4) // 1マスに頂点4個
+
+        showFlags = new Int16Array(masuCount)
+
+        var indexes = new Uint32Array(masuCount * 3 * 2) // 1マスに頂点6個
+        var l = L / divisionCount // 1マスのサイズ
+
+        // 0,12,24,36
+        for (let j = 0; j < divisionCount; j += 1) {
+          // 0,1,2,...
+          for (let i = 0; i < divisionCount * 12; i += 12) {
+            // 0,12,36,54,...
+
+            let a = j * divisionCount * 12 + i
+
+            // 頂点1
+            positions[a] = i / 12 //x
+            positions[a + 1] = j //y
+            positions[a + 2] = 0.0 //z
+            // 頂点2
+            positions[a + 3] = i / 12 + 1 //z
+            positions[a + 4] = j //z
+            positions[a + 5] = 0.0 //z
+            // 頂点3
+            positions[a + 6] = i / 12 + 1 //z
+            positions[a + 7] = j + 1 //z
+            positions[a + 8] = 0.0 //z
+
+            // 頂点4
+            positions[a + 9] = i / 12 //z
+            positions[a + 10] = j + 1 //z
+            positions[a + 11] = 0.0 //z
+          }
+        }
+
+        positions = positions.map((num) => {
+          // num == 0 ? num :
+          return num * l - L / 2
+        })
+
+        //console.log(positions); // 48
+
+        for (let i = 0; i < colors.length; i += 12) {
+          var r = Math.random()
+          var c = 0.0 //r < 0.3 ? 0.0 : 1.0; // 0.0：非表示、1.0：表示
+          colors[i] = c
+          colors[i + 1] = c
+          colors[i + 2] = c
+
+          colors[i + 3] = c
+          colors[i + 4] = c
+          colors[i + 5] = c
+
+          colors[i + 6] = c
+          colors[i + 7] = c
+          colors[i + 8] = c
+
+          colors[i + 9] = c
+          colors[i + 10] = c
+          colors[i + 11] = c
+        }
+
+        // 0,8,16,24,32,
+
+        var w = 1 / divisionCount // 0.5
+
+        for (let row = 0; row < divisionCount; row++) {
+          var a = row * 8 * divisionCount
+          for (let i = 0; i < divisionCount * 8; i += 8) {
+            var col = Math.floor(i / 8)
+            var offset_x = col * w
+            var offset_y = row * w
+
+            uvs[a + i] = offset_x // 0.5
+            uvs[a + i + 1] = offset_y // 0.0
+
+            uvs[a + i + 2] = w + offset_x // 1.0
+            uvs[a + i + 3] = offset_y // 0.0
+
+            uvs[a + i + 4] = w + offset_x // 1.0
+            uvs[a + i + 5] = w + offset_y // 0.5
+
+            uvs[a + i + 6] = offset_x // 0.5
+            uvs[a + i + 7] = w + offset_y // 0.5
+          }
+        }
+
+        //0,6,12,18,24
+        for (let i = 0; i < indexes.length; i += 6) {
+          var a = i
+          var b = Math.floor(i / 1.5) // 0,4,12,16
+          //console.log(b);
+          // 0,4,8,12,16
+
+          //三角形１
+          indexes[a] = b + 0
+          indexes[a + 1] = b + 1
+          indexes[a + 2] = b + 2
+
+          //三角形2
+          indexes[a + 3] = b + 0
+          indexes[a + 4] = b + 2
+          indexes[a + 5] = b + 3
+        }
+        // console.log(indexes); // 24
+
+        for (let i = 0; i < showFlags.length; i++) {
+          showFlags[i] = 0
+        }
+
+        var geometry = new THREE.BufferGeometry()
+        geometry.addAttribute(
+          "position",
+          new THREE.BufferAttribute(positions, 3),
+        )
+        geometry.addAttribute("color", new THREE.BufferAttribute(colors, 3))
+        geometry.addAttribute("uv", new THREE.BufferAttribute(uvs, 2))
+        geometry.setIndex(new THREE.BufferAttribute(indexes, 1))
+
+        var loader = new THREE.TextureLoader()
+        // var texture = loader.load('img/gradation.jpg');
+        var texture = loader.load("img/riria_02.jpg")
+
+        var uniforms = { tex: { type: "t", value: texture } }
+        var material = new THREE.ShaderMaterial({
+          vertexShader: document.getElementById("vertexShader").textContent,
+          fragmentShader: document.getElementById("fragmentShader").textContent,
+          uniforms: uniforms,
+          side: THREE.DoubleSide,
+        })
+
+        divisions = new THREE.Mesh(geometry, material)
+        //divisions.position.set(0, 0, L / 2); // 未決
+        divisions.position.set(0, 0, 0) // 未決
+
+        scene.add(divisions)
+
+        lastPixel = showFlags.length
+      }
+      function initLight() {}
+
+      var step = 0
+      var showDirection = true
+      var waitStep = 0
+      // var count = 0;
+      var lastPixel
+      function loop() {
+        trackball.update()
+
+        // colorsの更新
+        step++
+
+        // 全てのshowFlagsの0を1に変える、ランダムに
+
+        if (step % 1 == 0) {
+          // count++;
+
+          var r = Math.ceil(Math.random() * lastPixel)
+
+          var zeroCount = 0
+
+          for (let i = 0; i < showFlags.length; i++) {
+            if (showFlags[i] == showDirection ? 0 : 1) {
+              zeroCount += 1
+              if (zeroCount == r) {
+                showFlags[i] = showDirection ? 1 : 0
+                break
+              }
+            }
+          }
+
+          for (let i = 0; i < showFlags.length; i++) {
+            if (showFlags[i] == showDirection ? 1 : 0) {
+              var a = i * 12
+              var show = showDirection ? 1.0 : 0.0
+              colors[a] = show
+              colors[a + 1] = show
+              colors[a + 2] = show
+              colors[a + 3] = show
+              colors[a + 4] = show
+              colors[a + 5] = show
+              colors[a + 6] = show
+              colors[a + 7] = show
+              colors[a + 8] = show
+              colors[a + 9] = show
+              colors[a + 10] = show
+              colors[a + 11] = show
+            }
+          }
+
+          lastPixel--
+
+          // console.log(showFlags);
+
+          divisions.geometry.attributes.color.array = colors
+          divisions.geometry.attributes.color.needsUpdate = true
+
+          if (lastPixel <= 0) {
+            waitStep++
+          }
+
+          if (waitStep > 60) {
+            lastPixel = showFlags.length
+            showDirection = !showDirection
+            waitStep = 0
+          }
+        }
+
+        var x = divisions.rotation.x
+        var y = divisions.rotation.y
+        var z = divisions.rotation.z
+
+        var add = -0.03
+
+        divisions.rotation.set(x, y + add, z)
+
+        renderer.render(scene, camera)
+        requestAnimationFrame(loop)
+      }
+    </script>
+    <script id="vertexShader" type="x-shader/x-vertex">
+      attribute vec4 color;
+      varying vec4 vColor;
+      varying vec2 vUv;
+      void main() {
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        vUv = uv;
+        vColor = color;
+      }
+    </script>
+    <script id="fragmentShader" type="x-shader/x-fragment">
+      varying vec2 vUv;
+      varying vec4 vColor;
+      uniform sampler2D tex;
+      void main() {
+        vec4 texcel = texture2D(tex, vUv);
+        if (vColor.x == 0.0) discard;
+        gl_FragColor = vColor * texcel; //vec4(1.0, 0.0, 0.0, 1.0);
+      }
+    </script>
+  </head>
+
+  <!-- <body class="original-css-backdropFilter"> -->
+  <body>
+    <div id="back-filter" class="original-css-backdropFilter"></div>
+    <div id="canvas-frame"></div>
+  </body>
+</html>

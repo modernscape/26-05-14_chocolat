@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>〈4〉paper riria</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r122/three.min.js"></script>
+    <script src="./jsexamples/js/gsap.min.js"></script>
+    <script src="./jsexamples/js/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.co/gsap@3/dist/gsap.min.js"></script>
+    <script src="https://unpkg.com/gsap@3/dist/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.131.3/examples/js/math/MeshSurfaceSampler.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.131.3/examples/js/loaders/MTLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.131.3/examples/js/loaders/OBJLoader.js"></script>
+    <script src="./js/examples/js/controls/TrackballControls.js"></script>
+    <script src="./js/examples/jsm/utils/bufferGeometryUtils.js"></script>
+    <script src="_utils.js"></script>
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+
+      * {
+        -webkit-user-select: none; /* Chrome or Safari */
+        -moz-user-select: none; /* FireFox */
+        -ms-user-select: none; /* IE */
+        -o-user-select: none; /* Opera */
+        user-select: none;
+      }
+      :root {
+        --main-color: rgb(175, 175, 175);
+      }
+      div#canvas-frame {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        position: relative;
+        z-index: 2;
+      }
+      html {
+        height: 100%;
+      }
+      body {
+        background-image: url("img/white4.jpg");
+        background-repeat: no-repeat;
+        background-size: cover;
+        /* background-color: black; */
+        background-position: center;
+        height: 100%;
+      }
+      #back-filter {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+      }
+      .original-css-backdropFilter {
+        width: 100%;
+        height: 100%;
+        /* background-color: rgba(0, 0, 0, 0.5); */
+        /* backdrop-filter: blur(1px) brightness(0.5) opacity(50%) saturate(40%); */
+      }
+
+      #text {
+        color: var(--main-color);
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+      }
+
+      p.tap {
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        opacity: 0.9;
+        background-image: url(img/tap.png);
+        background-size: contain;
+        user-select: none;
+        opacity: 0;
+      }
+    </style>
+    <script>
+      window.addEventListener("load", function () {
+        threeStart()
+        resize()
+
+        document.body.addEventListener("pointerdown", function (e) {
+          // if (step >= stepMax && longPressed == false) {
+          //   longPressed = true;
+          //   generatePos_cur();
+          //   per = 0.999;
+          // }
+        })
+        document.body.addEventListener("pointerup", function (e) {
+          // longPressed = false;
+          // generatePos_cur();
+          // per = 0.0;
+        })
+      })
+      window.addEventListener("resize", function () {
+        resize()
+      })
+
+      function resize() {
+        var w = document.documentElement.clientWidth
+        var h = document.documentElement.clientHeight
+
+        backFilter.style.height = h
+
+        canvasFrame.style.width = w
+        canvasFrame.style.height = h
+        canvasFrame.style.left = 0
+        canvasFrame.style.top = 0
+        camera.aspect = w / h
+        renderer.setSize(w, h)
+        renderer.setPixelRatio(window.devicePixelRatio)
+        renderer.setSize(w, h)
+        camera.updateProjectionMatrix() // ⭐️⭐️⭐️⭐️⭐️
+      }
+
+      var canvasFrame, renderer, scene
+      function threeStart() {
+        initThree() //Three.js初期化関数の実行
+        initCamera() //カメラ初期化関数の実行
+        initLight() //光源初期化関数の実行
+        initObject() //オブジェクト初期化関数の実行
+        loop()
+      }
+
+      function initThree() {
+        //キャンバスフレームDOM要素の取得
+        canvasFrame = document.getElementById("canvas-frame")
+        backFilter = document.getElementById("back-filter")
+
+        //レンダラーオブジェクトの生成
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+
+        if (!renderer) alert("Three.js の初期化に失敗しました")
+        //レンダラーのサイズの設定
+        renderer.setSize(canvasFrame.clientWidth, canvasFrame.clientHeight)
+        //キャンバスフレームDOM要素にcanvas要素を追加
+        canvasFrame.appendChild(renderer.domElement)
+
+        //レンダラークリアーカラーの設定
+        renderer.setClearColor(0x000000, 0.5)
+        renderer.setPixelRatio(window.devicePixelRatio)
+        renderer.shadowMap.enabled = true
+
+        //シーンオブジェクトの生成
+        scene = new THREE.Scene()
+      }
+
+      var camera, trackball //カメラオブジェクト
+      function initCamera() {
+        //カメラオブジェクトの生成
+        camera = new THREE.PerspectiveCamera(
+          45,
+          canvasFrame.clientWidth / canvasFrame.clientHeight,
+          1,
+          10000,
+        )
+        //カメラの位置の設定
+        camera.position.set(0, 0, 600)
+        //カメラの上ベクトルの設定
+        camera.up.set(0, 1, 0)
+        //カメラの中心位置ベクトルの設定
+        camera.lookAt({ x: 0, y: 0, z: 0 }) //トラックボール利用時は自動的に無効
+
+        camera._zoomFacfor = 0.0 // phase_1 用
+
+        trackball = new THREE.TrackballControls(camera, canvasFrame)
+        //トラックボール動作範囲のサイズとオフセットの設定
+        trackball.screen.width = canvasFrame.clientWidth //横幅
+        trackball.screen.height = canvasFrame.clientHeight //縦幅
+        trackball.screen.offsetLeft = canvasFrame.getBoundingClientRect().left //左オフセット
+        trackball.screen.offsetTop = canvasFrame.getBoundingClientRect().top //右オフセット
+
+        //トラックボールの回転無効化と回転速度の設定
+        trackball.noRotate = false
+        trackball.rotateSpeed = 4.0
+
+        //トラックボールの拡大無効化と拡大速度の設定
+        trackball.noZoom = false
+        trackball.zoomSpeed = 4.0
+
+        //トラックボールのカメラ中心移動の無効化と中心速度の設定
+        trackball.noPan = true
+        trackball.panSpeed = 1.0
+        trackball.target = new THREE.Vector3(0, 0, 0)
+
+        //トラックボールのスタティックムーブの有効化
+        trackball.staticMoving = true
+        //トラックボールのダイナミックムーブ時の減衰定数
+        trackball.dynamicDampingFactor = 0.3
+
+        trackball.minDistance = 50 // 250
+        trackball.maxDistance = 1500 // 1200
+      }
+
+      let sec_initLight
+
+      function initLight() {
+        directionalLight = new THREE.DirectionalLight(0xffffff, 0.7, 0)
+
+        directionalLight.position.set(50, 20, 100)
+        directionalLight.castShadow = true
+
+        ambientLight = new THREE.AmbientLight(0xffffff, 0.3)
+
+        scene.add(ambientLight)
+
+        scene.add(directionalLight)
+
+        const helper = new THREE.DirectionalLightHelper(directionalLight)
+        // scene.add(helper);
+
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100)
+        pointLight.position.set(-20, -60, 70)
+        scene.add(pointLight)
+
+        const sphereSize = 10
+        const pointLightHelper = new THREE.PointLightHelper(
+          pointLight,
+          sphereSize,
+        )
+        // scene.add(pointLightHelper);
+
+        const pointLight2 = new THREE.PointLight(0x0000ff, 0.5, 1000)
+        pointLight2.position.set(20, 60, -70)
+        scene.add(pointLight2)
+
+        const pointLightHelper2 = new THREE.PointLightHelper(
+          pointLight2,
+          sphereSize,
+        )
+        // scene.add(pointLightHelper2);
+
+        const pointLight3 = new THREE.PointLight(0xff00ff, 0.3, 100)
+        pointLight3.position.set(20, -100, -50)
+        scene.add(pointLight3)
+
+        const pointLightHelper3 = new THREE.PointLightHelper(
+          pointLight3,
+          sphereSize,
+        )
+        // scene.add(pointLightHelper3);
+      }
+
+      //////////////////////////////////////////////
+      // initObject
+      //////////////////////////////////////////////
+      let sec_initObject
+
+      let _group, axes, _obj
+
+      const modelName = "018"
+
+      function initObject() {
+        // const path = './model/' + modelName + '/';
+        const path = "./model/" + modelName + "/"
+        axes = new THREE.AxesHelper(200)
+        axes.position.set(0, 0, 0)
+        // scene.add(axes);
+
+        let loader = new THREE.MTLLoader()
+        const textureloader = new THREE.TextureLoader()
+        var objLoader = new THREE.OBJLoader()
+
+        loader.load(path + "imageShape.mtl", function (materials) {
+          objLoader.setMaterials(materials)
+
+          materials.side = THREE.DoubleSide
+          objLoader.load(path + "imageShape.obj", function (object) {
+            // setCubeTexture(object);
+
+            object.position.set(0, 0, 0)
+            const k = 1.0
+            object.scale.set(k, k, k)
+            object.rotation.set(Math.PI / 2, 0, 0)
+
+            object.castShadow = true
+            object.recieveShadow = true
+
+            scene.add(object)
+
+            const material = object.children[0].material
+
+            material.shineness = 0.0
+            material.reflectivity = 0.0
+            material.transparent = false
+            material.blending = 0
+
+            console.log(material)
+          })
+        })
+      }
+
+      function setCubeTexture(parent) {
+        const urls = [
+          "./model/015/planet/posx.jpg",
+          "./model/015/planet/posx.jpg",
+          "./model/015/planet/posx.jpg",
+          "./model/015/planet/posx.jpg",
+          "./model/015/planet/posx.jpg",
+          "./model/015/planet/posx.jpg",
+        ]
+
+        const cubeLoader = new THREE.CubeTextureLoader()
+        const textureCube = cubeLoader.load(urls)
+        textureCube.mapping = THREE.CubeReflactionMapping
+
+        parent.traverse(function (mesh) {
+          if (mesh instanceof THREE.Mesh) {
+            mesh.material.envMap = textureCube
+            mesh.material.reflectivity = 0.5
+          }
+        })
+      }
+
+      // let readyCount = false;
+
+      //////////////////////////////////////////////
+      // loop
+      //////////////////////////////////////////////
+      let sec_loop
+
+      function loop() {
+        trackball.update()
+
+        renderer.render(scene, camera)
+
+        makePicture()
+        requestAnimationFrame(loop)
+      }
+
+      //////////////////////////////////////////////
+      // その他
+      //////////////////////////////////////////////
+
+      var makePictureFlag = false
+
+      //画像作成用イベント
+      window.addEventListener("keydown", function (e) {
+        //キーボードイベント時のキー取得
+        var keyChar = String.fromCharCode(e.keyCode).toLowerCase()
+
+        //キーボードの「s」が押された場合
+        if (keyChar == "s") {
+          makePictureFlag = true
+        }
+      })
+
+      //画像作成関数
+      function makePicture() {
+        if (!makePictureFlag) return
+
+        //グラフィックスが描画されたcanvas要素
+        var canvas = renderer.domElement
+
+        //a要素の生成
+        var a = document.createElement("a")
+        //canvas要素→DataURL形式
+        a.href = canvas.toDataURL("image/png")
+        //PNGファイル名の命名
+        a.download = "picture"
+        a.innerHTML = "ダウンロード"
+
+        a.dispatchEvent(new PointerEvent("click"))
+
+        //id="thumbnails"のdiv要素の子要素にa要素を追加
+        document.getElementsByTagName("body")[0].appendChild(a)
+
+        makePictureFlag = false
+      }
+    </script>
+    <script id="vertexShader" type="x-shader/x-vertex">
+      attribute vec3 position;
+      attribute vec3 position_second;
+      uniform float u_sec;
+      uniform float u_A;
+      uniform float u_R;
+      uniform float u_G;
+      uniform float u_B;
+
+      uniform mat4 projectionMatrix;
+      uniform mat4 modelViewMatrix;
+
+      varying float A;
+      varying float R;
+      varying float G;
+      varying float B;
+      //varying float sec;
+
+      void main() {
+        vec3 newPos = mix(position, position_second, u_sec);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
+        gl_PointSize = 0.5;
+        A = u_A;
+        R = u_R;
+        G = u_G;
+        B = u_B;
+        //sec = u_sec;
+      }
+    </script>
+    <script id="fragmentShader" type="x-shader/x-fragment">
+      precision highp float;
+      //uniform float u_sec;
+      //varying sec;
+      varying float A;
+      varying float R;
+      varying float G;
+      varying float B;
+      void main() {
+        gl_FragColor = vec4(R, G, B, A);
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="back-filter" class="original-css-backdropFilter"></div>
+    <div id="canvas-frame"></div>
+    <p id="text">paper riria</p>
+    <p class="tap"></p>
+    <!-- <img src="img/tap.png" alt="" srcset="" /> -->
+  </body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>riria world</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --main-color: rgb(255, 125, 168);
+        --nothingness-color: rgb(99, 99, 99);
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        color: var(--main-color);
+        height: 100vh;
+      }
+      li {
+        list-style-type: none;
+        margin-top: 20px;
+        text-align: center;
+      }
+      li a {
+        text-decoration: none;
+        font-size: 120%;
+        font-weight: bold;
+        padding: 5px 40px;
+        border: 2px solid var(--main-color);
+        border-radius: 50px;
+        color: var(--main-color);
+      }
+
+      li a:hover {
+        background: rgba(40, 255, 248, 0.151);
+      }
+
+      .txt-center {
+        text-align: center;
+      }
+
+      .nothingness a {
+        border-color: var(--nothingness-color);
+        color: var(--nothingness-color);
+      }
+
+      li.nothingness a:hover {
+        background: rgba(255, 238, 0, 0.649);
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1 class="txt-center">riria world</h1>
+    <ol>
+      <li><a href="./riria_01.html" target="01">ドット・リリア</a></li>
+      <li><a href="./riria_02.html" target="02">ピクセル・リリア</a></li>
+      <li><a href="./riria_03.html" target="03">モーフ・リリア</a></li>
+      <li>
+        <a href="/three.js_book/practice/24-09-07_imageShapes.html" target="04"
+          >ペーパー・リリア</a
+        >
+      </li>
+      <li class="nothingness">
+        <a
+          href="/three.js_book/practice/24-09-07_flyingPetal.html"
+          target="nothingness"
+          >nothingness</a
+        >
+      </li>
+    </ol>
+  </body>
+</html>

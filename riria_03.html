@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>〈3〉morph riria</title>
+    <!-- <script src="./jsbuild/three.js"></script> -->
+    <!-- <script src="./jsbuild/three90.min.js"></script> -->
+
+    <script src="https://unpkg.co/gsap@3/dist/gsap.min.js"></script>
+    <script src="https://unpkg.com/gsap@3/dist/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r122/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.131.3/examples/js/math/MeshSurfaceSampler.js"></script>
+    <script src="./js/controls/TrackballControls.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --main-color: rgb(255, 125, 168);
+      }
+      div#canvas-frame {
+        width: 500px; /* 横幅 */
+        height: 500px; /* 縦幅 */
+        overflow: hidden;
+        position: relative;
+        z-index: 2;
+      }
+      html {
+        height: 100%;
+      }
+      body {
+        background-image: url("img/sky5.jpg");
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-color: black;
+        background-position: center;
+        height: 100%;
+      }
+      #back-filter {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+      }
+      .original-css-backdropFilter {
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(1px) brightness(0.5) opacity(50%) saturate(40%);
+      }
+
+      #text {
+        color: var(--main-color);
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+      }
+    </style>
+    <script>
+      window.addEventListener("load", function () {
+        threeStart()
+        resize()
+      })
+
+      window.addEventListener("resize", function () {
+        resize()
+      })
+
+      function resize() {
+        var w = document.documentElement.clientWidth
+        var h = document.documentElement.clientHeight
+
+        if (w > h) {
+          canvasFrame.style.width = document.documentElement.clientHeight + "px"
+          canvasFrame.style.height =
+            document.documentElement.clientHeight + "px"
+          canvasFrame.style.left = (w - h) / 2 + "px"
+        } else {
+          canvasFrame.style.width = document.documentElement.clientWidth + "px"
+          canvasFrame.style.height = document.documentElement.clientWidth + "px"
+          canvasFrame.style.top = (h - w) / 2 + "px"
+        }
+
+        backFilter.style.height = h
+
+        renderer.setSize(canvasFrame.clientWidth, canvasFrame.clientHeight)
+      }
+      var canvasFram, renderer, scene
+      function threeStart() {
+        initThree() //Three.js初期化関数の実行
+        initCamera() //カメラ初期化関数の実行
+        initLight() //光源初期化関数の実行
+        initObject() //オブジェクト初期化関数の実行
+      }
+      function initThree() {
+        //キャンバスフレームDOM要素の取得
+        canvasFrame = document.getElementById("canvas-frame")
+        backFilter = document.getElementById("back-filter")
+        //レンダラーオブジェクトの生成
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+
+        if (!renderer) alert("Three.js の初期化に失敗しました")
+        //レンダラーのサイズの設定
+        renderer.setSize(canvasFrame.clientWidth, canvasFrame.clientHeight)
+        //キャンバスフレームDOM要素にcanvas要素を追加
+        canvasFrame.appendChild(renderer.domElement)
+
+        //レンダラークリアーカラーの設定
+        renderer.setClearColor(0x000000, 0.0)
+
+        //シーンオブジェクトの生成
+        scene = new THREE.Scene()
+        scene.sec = 0.0
+      }
+
+      const lerp = (x, y, p) => {
+        return x + (y - x) * p
+      }
+
+      var camera, trackball //カメラオブジェクト
+      function initCamera() {
+        //カメラオブジェクトの生成
+        camera = new THREE.PerspectiveCamera(
+          45,
+          canvasFrame.clientWidth / canvasFrame.clientHeight,
+          1,
+          10000,
+        )
+        //カメラの位置の設定
+        camera.position.set(50, 50, 300)
+        //カメラの上ベクトルの設定
+        camera.up.set(0, 0, 1)
+        //カメラの中心位置ベクトルの設定
+        camera.lookAt({ x: 0, y: 0, z: 0 }) //トラックボール利用時は自動的に無効
+
+        trackball = new THREE.TrackballControls(camera, canvasFrame)
+        //トラックボール動作範囲のサイズとオフセットの設定
+        trackball.screen.width = canvasFrame.clientWidth //横幅
+        trackball.screen.height = canvasFrame.clientHeight //縦幅
+        trackball.screen.offsetLeft = canvasFrame.getBoundingClientRect().left //左オフセット
+        trackball.screen.offsetTop = canvasFrame.getBoundingClientRect().top //右オフセット
+
+        //トラックボールの回転無効化と回転速度の設定
+        trackball.noRotate = false
+        trackball.rotateSpeed = 4.0
+
+        //トラックボールの拡大無効化と拡大速度の設定
+        trackball.noZoom = false
+        trackball.zoomSpeed = 4.0
+
+        //トラックボールのカメラ中心移動の無効化と中心速度の設定
+        trackball.noPan = false
+        trackball.panSpeed = 1.0
+        trackball.target = new THREE.Vector3(0, 0, 0)
+
+        //トラックボールのスタティックムーブの有効化
+        trackball.staticMoving = true
+        //トラックボールのダイナミックムーブ時の減衰定数
+        trackball.dynamicDampingFactor = 0.3
+      }
+
+      let axes, group
+      let objects = []
+      // let L = 200;
+      const l = 3
+      const numParticles = 2000
+
+      function generateObjects() {
+        group = new THREE.Group()
+        group.position.set(0, 0, 0)
+        const loader = new THREE.TextureLoader()
+        loader.load("./img/riria_03.jpg", function (texture) {
+          const material = new THREE.MeshPhongMaterial({
+            map: texture,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 10,
+          })
+
+          const geometry = new THREE.CubeGeometry(l, l, l)
+          const sphere = new THREE.Mesh(geometry, material)
+
+          sphere.position.set(20000, 200000, 20000) // 未決
+
+          for (let i = 0; i < numParticles; i++) {
+            const s = sphere.clone()
+
+            objects.push(s)
+            group.add(s)
+            scene.add(group)
+          }
+        })
+      }
+
+      let stage = 0
+      let positionsArray = []
+      let positions_0, positions_1
+
+      function updateObjectsPostion() {
+        if (stage == positionsArray.length - 1) {
+          positions_0 = positionsArray[stage]
+          positions_1 = positionsArray[0]
+        } else {
+          positions_0 = positionsArray[stage]
+          positions_1 = positionsArray[stage + 1]
+        }
+
+        for (let i = 0; i < objects.length; i += 3) {
+          const pos_0 = lerp(positions_0[i], positions_1[i], scene.sec)
+          const pos_1 = lerp(positions_0[i + 1], positions_1[i + 1], scene.sec)
+          const pos_2 = lerp(positions_0[i + 2], positions_1[i + 2], scene.sec)
+          objects[i].position.set(pos_0, pos_1, pos_2)
+        }
+      }
+
+      function initObject() {
+        // axes = new THREE.AxesHelper(200);
+        // axes.position.set(0, 0, 0);
+        // scene.add(axes);
+
+        const loadManager = new THREE.LoadingManager()
+        const loader = new THREE.FontLoader(loadManager)
+        // const fontPass = '../three.js_r75/examples/fonts/gentilis_bold.typeface.js';
+        const fontPass = "./js/examples/fonts/gentilis_bold.typeface.json"
+
+        loader.load(fontPass, function (font) {
+          const paramaters = {
+            font: font,
+            weight: "normal",
+            style: "normal",
+            size: 80,
+            height: 10,
+            curveSegments: 4,
+            bevelEnabled: true,
+            bevelThickness: 5,
+            bevelSize: 2,
+          }
+
+          const geometry = new THREE.TextGeometry("RIRIA", paramaters)
+          geometry.center()
+
+          const bufferGeometry = new THREE.BufferGeometry().fromGeometry(
+            geometry,
+          )
+
+          positionsArray.push(_particlesPosition(bufferGeometry))
+        })
+
+        const sphereGeometry = new THREE.SphereBufferGeometry(100, 16, 16)
+        positionsArray.push(_particlesPosition(sphereGeometry.toNonIndexed()))
+
+        const planeGeometry = new THREE.PlaneBufferGeometry(150, 150)
+        positionsArray.push(_particlesPosition(planeGeometry.toNonIndexed()))
+
+        const cylinderGeometry = new THREE.CylinderBufferGeometry(
+          50,
+          50,
+          200,
+          32,
+          32,
+        )
+        positionsArray.push(_particlesPosition(cylinderGeometry.toNonIndexed()))
+
+        const icosahefronGeometry = new THREE.IcosahedronBufferGeometry(100, 0)
+        positionsArray.push(_particlesPosition(icosahefronGeometry))
+
+        // load完了時
+        loadManager.onLoad = () => {
+          generateObjects()
+          loop() //無限ループ関数の実行
+        }
+      }
+
+      function animate() {
+        gsap.to(scene, {
+          sec: 1.0,
+          onComplete: nextStage,
+        })
+
+        // gsap.to(points.material.uniforms.u_sec1, {
+        //   value: 1.0,
+        //   scrollTrigger: {
+        //     trigger: '.s-1',
+        //     start: 'bottom bottom',
+        //     end: 'bottom top',
+        //     scrub: 0.7,
+        //   },
+        // });
+      }
+
+      function nextStage() {
+        stage++
+        scene.sec = 0
+        if (stage >= positionsArray.length) {
+          stage = 0
+        }
+      }
+
+      function initLight() {
+        //平行光源オブジェクトの生成
+        directionalLight = new THREE.DirectionalLight(0xdddddd, 2.0, 0)
+        //平行光源オブジェクトの位置の設定
+        directionalLight.position.set(50, 20, 100)
+
+        //環境光オブジェクトの生成
+        ambientLight = new THREE.AmbientLight(0x222222, 1.0)
+        //環境光オブジェクトのシーンへの追加
+        scene.add(ambientLight)
+
+        //平行光源オブジェクトのシーンへの追加
+        scene.add(directionalLight)
+      }
+
+      let step = 0
+      let k = 10000
+      function loop() {
+        trackball.update()
+
+        step++
+        if (step % 150 == 0) {
+          animate()
+        }
+
+        updateObjectsPostion()
+
+        group.rotation.x = (step % k) * 0.002
+        group.rotation.y = (step % k) * 0.002
+        group.rotation.z = (step % k) * 0.002
+        renderer.render(scene, camera)
+        requestAnimationFrame(loop)
+      }
+
+      function _particlesPosition(geometry) {
+        const material = new THREE.MeshBasicMaterial({
+          color: 0xff0000,
+        })
+        const mesh = new THREE.Mesh(geometry, material)
+        const sampler = new THREE.MeshSurfaceSampler(mesh).build() // ⭐️⭐️⭐️⭐️⭐️
+        const particlesPosition = new Float32Array(numParticles * 3)
+        for (let i = 0; i < numParticles; i++) {
+          const newPosision = new THREE.Vector3() //座標
+          const normal = new THREE.Vector3() //法線
+
+          sampler.sample(newPosision, normal)
+          particlesPosition.set(
+            [newPosision.x, newPosision.y, newPosision.z],
+            i * 3,
+          ) //3つ同時に追加
+        }
+        return particlesPosition
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="back-filter" class="original-css-backdropFilter"></div>
+    <div id="canvas-frame"></div>
+    <p id="text">morph riria</p>
+    <!-- <input id="btn" type="button" value="animate" /> -->
+  </body>
+</html>

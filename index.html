@@ -1,0 +1,347 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>〈1〉dot riria</title>
+    <!-- <script src="../three.js_r73/build/three.js"></script> -->
+    <script src="./js/build/three90.min.js"></script>
+    <!-- Three.js用ライブラリ -->
+    <script src="./js/controls/TrackballControls.js"></script>
+    <!-- トラックボール用ライブラリ -->
+    <!-- ポストプロセッシング関連 -->
+    <script src="./js/postprocessing/EffectComposer.js"></script>
+    <script src="./js/postprocessing/RenderPass.js"></script>
+    <script src="./js/postprocessing/ShaderPass.js"></script>
+    <script src="./js/postprocessing/MaskPass.js"></script>
+    <script src="./js/postprocessing/DotScreenPass.js"></script>
+    <!-- シェーダープログラム -->
+    <script src="./js/shaders/CopyShader.js"></script>
+    <script src="./js/shaders/DotScreenShader.js"></script>
+
+    <style>
+      * {
+        padding: 0px;
+        margin: 0px;
+      }
+      div#canvas-frame {
+        width: 500px; /* 横幅 */
+        height: 500px; /* 縦幅 */
+        overflow: hidden;
+        position: relative;
+      }
+    </style>
+    <script>
+      ////////////////////////////////////////////////////////////////////
+      // windowイベントの定義
+      ////////////////////////////////////////////////////////////////////
+      window.addEventListener("load", function () {
+        threeStart() //Three.jsのスタート関数の実行
+      })
+
+      window.addEventListener("resize", function () {
+        resize()
+      })
+
+      function resize() {
+        var w = document.documentElement.clientWidth
+        var h = document.documentElement.clientHeight
+
+        if (w > h) {
+          canvasFrame.style.width = document.documentElement.clientHeight + "px"
+          canvasFrame.style.height =
+            document.documentElement.clientHeight + "px"
+          canvasFrame.style.left = (w - h) / 2 + "px"
+        } else {
+          canvasFrame.style.width = document.documentElement.clientWidth + "px"
+          canvasFrame.style.height = document.documentElement.clientWidth + "px"
+          canvasFrame.style.top = (h - w) / 2 + "px"
+        }
+
+        renderer.setSize(canvasFrame.clientWidth, canvasFrame.clientHeight)
+        // canvasFrame.style.width = w + 'px';
+        // canvasFrame.style.height = h + 'px';
+
+        // if (w < h) {
+        //   renderer.setSize(w, w);
+        // } else {
+        //   renderer.setSize(h, h);
+        // }
+
+        // console.log(canvasFrame.style.left);
+        // console.log(canvasFrame.style.top);
+      }
+      ////////////////////////////////////////////////////////////////////
+      // Three.jsスタート関数の定義
+      ////////////////////////////////////////////////////////////////////
+      function threeStart() {
+        initThree() //Three.js初期化関数の実行
+        initLight() //光源初期化関数の実行
+        initCamera() //カメラ初期化関数の実行
+        initObject() //オブジェクト初期化関数の実行
+        // initPostprocessing();
+        // resize();
+        // loop(); //無限ループ関数の実行
+      }
+      ////////////////////////////////////////////////////////////////////
+      // Three.js初期化関数の定義
+      ////////////////////////////////////////////////////////////////////
+      //グローバル変数の宣言
+      var renderer, //レンダラーオブジェクト
+        scene, //シーンオブジェクト
+        canvasFrame //キャンバスフレームのDOM要素
+      function initThree() {
+        //キャンバスフレームDOM要素の取得
+        canvasFrame = document.getElementById("canvas-frame")
+        //レンダラーオブジェクトの生成
+        renderer = new THREE.WebGLRenderer({ antialias: true })
+        //renderer = new THREE.CanvasRenderer();//<-----------------------------------------------------（canvasレンダラー）
+
+        if (!renderer) alert("Three.js の初期化に失敗しました")
+        //レンダラーのサイズの設定
+        renderer.setSize(canvasFrame.clientWidth, canvasFrame.clientHeight)
+
+        //キャンバスフレームDOM要素にcanvas要素を追加
+        canvasFrame.appendChild(renderer.domElement)
+
+        // canvasFrame.addEventListener(
+        //   'mouseup',
+        //   function () {
+        //     makePictureFlag = true;
+        //   },
+        //   false
+        // );
+
+        //レンダラークリアーカラーの設定
+        renderer.setClearColor(0xeeeeee, 1.0)
+        // renderer.setClearColor(0xffffff, 1.0);
+
+        //シーンオブジェクトの生成
+        scene = new THREE.Scene()
+      }
+      ////////////////////////////////////////////////////////////////////
+      // カメラ初期化関数の定義
+      ////////////////////////////////////////////////////////////////////
+      //グローバル変数の宣言
+      var camera //カメラオブジェクト
+      var trackball ///トラックボールオブジェクト
+      var transform //トランスフォームオブジェクト
+      function initCamera() {
+        //カメラオブジェクトの生成
+        camera = new THREE.PerspectiveCamera(
+          45,
+          canvasFrame.clientWidth / canvasFrame.clientHeight,
+          1,
+          10000,
+        )
+        //カメラの位置の設定
+        // camera.position.set(50, 50, 50);
+        camera.position.set(84, 41, -63)
+
+        camera.rotation.set = new THREE.Vector3(-2.33, 0.98, 2.52)
+
+        //カメラの上ベクトルの設定
+        // camera.up.set(0, 0, 1);
+        //カメラの中心位置ベクトルの設定
+        camera.lookAt({ x: 0, y: 0, z: 0 }) //トラックボール利用時は自動的に無効
+
+        //トラックボールオブジェクトの宣言
+        trackball = new THREE.TrackballControls(camera, canvasFrame)
+
+        //トラックボール動作範囲のサイズとオフセットの設定
+        trackball.screen.width = canvasFrame.clientWidth //横幅
+        trackball.screen.height = canvasFrame.clientHeight //縦幅
+        trackball.screen.offsetLeft = canvasFrame.getBoundingClientRect().left //左オフセット
+        trackball.screen.offsetTop = canvasFrame.getBoundingClientRect().top //右オフセット
+
+        //トラックボールの回転無効化と回転速度の設定
+        trackball.noRotate = false
+        trackball.rotateSpeed = 4.0
+
+        //トラックボールの拡大無効化と拡大速度の設定
+        trackball.noZoom = false
+        trackball.zoomSpeed = 4.0
+
+        //トラックボールのカメラ中心移動の無効化と中心速度の設定
+        trackball.noPan = false
+        trackball.panSpeed = 1.0
+        trackball.target = new THREE.Vector3(0, 0, 0)
+
+        //トラックボールのスタティックムーブの有効化
+        trackball.staticMoving = true
+        //トラックボールのダイナミックムーブ時の減衰定数
+        trackball.dynamicDampingFactor = 0.3
+      }
+      ////////////////////////////////////////////////////////////////////
+      // 光源初期化関数の定義
+      ////////////////////////////////////////////////////////////////////
+      //グローバル変数の宣言
+      var directionalLight, //平行光源オブジェクト
+        ambientLight //環境光オブジェクト
+      function initLight() {
+        //平行光源オブジェクトの生成
+        directionalLight = new THREE.DirectionalLight(0xffffff, 1.2, 0)
+        //平行光源オブジェクトの位置の設定
+        directionalLight.position.set(60, 30, 100)
+        //平行光源オブジェクトのシーンへの追加
+        scene.add(directionalLight)
+
+        //環境光オブジェクトの生成
+        // ambientLight = new THREE.AmbientLight(0x222222);
+        ambientLight = new THREE.AmbientLight(0x555555)
+        //環境光オブジェクトのシーンへの追加
+        scene.add(ambientLight)
+      }
+
+      ////////////////////////////////////////////////////////////////////
+      // オブジェクト初期化関数の定義
+      ////////////////////////////////////////////////////////////////////
+      //グローバル変数の宣言
+      var axis //軸オブジェクト
+      var cube //立方体オブジェクト
+      function initObject() {
+        // //軸オブジェクトの生成
+        // axis = new THREE.AxisHelper(100);
+        // //軸オブジェクトのシーンへの追加
+        // scene.add(axis);
+        // //軸オブジェクトの位置座標を設定
+        // axis.position.set(0, 0, 0);
+
+        ///////////////立方体の形状と材質の定義//////////////////
+        //形状オブジェクトの宣言と生成
+        const loadManager = new THREE.LoadingManager()
+        const loader = new THREE.TextureLoader(loadManager)
+
+        const materials = [
+          new THREE.MeshBasicMaterial({
+            map: loader.load("./img/riria_01.jpg"),
+          }),
+          new THREE.MeshBasicMaterial({
+            map: loader.load("./img/riria_02.jpg"),
+          }),
+          new THREE.MeshBasicMaterial({
+            map: loader.load("./img/riria_03.jpg"),
+          }),
+          new THREE.MeshBasicMaterial({
+            map: loader.load("./img/riria_04.jpg"),
+          }),
+          new THREE.MeshBasicMaterial({
+            map: loader.load("./img/riria_05.jpg"),
+          }),
+          new THREE.MeshBasicMaterial({
+            map: loader.load("./img/riria_06.jpg"),
+          }),
+        ]
+
+        var geometry = new THREE.BoxGeometry(50, 50, 50)
+
+        loadManager.onLoad = () => {
+          cube = new THREE.Mesh(geometry, materials)
+          scene.add(cube)
+          // console.log('onLoad!');
+          // renderer.render(scene, camera);
+
+          initPostprocessing()
+          resize()
+          loop()
+        }
+
+        // 材質オブジェクトの宣言と生成
+        // var material = new THREE.MeshLambertMaterial({
+        //   map: new THREE.TextureLoader().load('img/riria_01.jpg'),
+        // });
+
+        ///////////////立方体オブジェクトの準備//////////////////
+        //立方体オブジェクトの生成
+        // cube = new THREE.Mesh(geometry, material);
+        //立方体オブジェクトのシーンへの追加
+        // scene.add(cube);
+      }
+
+      ////////////////////////////////////////////////////////////////////
+      // 無限ループ関数の定義
+      ////////////////////////////////////////////////////////////////////
+      //グローバル変数の宣言
+      var step = 0 //ステップ数
+      function loop_() {
+        trackball.update()
+        renderer.render(scene, camera)
+
+        // makePicture();
+        requestAnimationFrame(loop_)
+      }
+      function loop() {
+        //トラックボールによるカメラオブジェクトのプロパティの更新
+        trackball.update()
+
+        //ステップ数のインクリメント
+        step++
+
+        //ステップ数のインクリメント
+
+        var x = cube.rotation.x
+        var y = cube.rotation.y
+        var z = cube.rotation.z
+
+        var add = -0.015
+
+        cube.rotation.set(x, y + add, z)
+
+        //レンダリング
+        composer.render()
+        //renderer.render( scene, camera );
+
+        //画面キャプチャ生成
+        // makePicture();
+
+        //「loop()」関数の呼び出し
+        requestAnimationFrame(loop)
+      }
+
+      ////////////////////////////////////////////////////////////////////
+      // ポストプロセッシングの準備
+      ////////////////////////////////////////////////////////////////////
+      var composer
+      function initPostprocessing() {
+        //エフェクトコンポーザーオブジェクトの生成
+        composer = new THREE.EffectComposer(renderer)
+
+        //レンダラパスオブジェクトの生成
+        var renderPass = new THREE.RenderPass(scene, camera)
+        //エフェクトコンポーザーオブジェクトに追加
+        composer.addPass(renderPass)
+
+        //エフェクトオブジェクトの生成
+        var effect = new THREE.DotScreenPass(
+          new THREE.Vector2(128, 128), //
+          Math.PI / 5, //ドットの並び方向
+          1.0, //ドットの粒度
+        )
+
+        // スクリーンへのレンダリングを出力
+        effect.renderToScreen = true
+
+        //エフェクトコンポーザーオブジェクトに追加
+        composer.addPass(effect)
+      }
+      /////////////////////////////////////////////////////////
+      //画面キャプチャ生成
+      /////////////////////////////////////////////////////////
+      //   makePictureFlag = true;
+      //   function makePicture() {
+      //     if (makePictureFlag) {
+      //       //canvas要素→DataURL形式
+      //       document.getElementById('pictureDownload').href = renderer.domElement.toDataURL('image/png');
+      //       //PNGファイル名の命名
+      //       document.getElementById('pictureDownload').download = 'picture';
+
+      //       makePictureFlag = false;
+      //     }
+      //   }
+    </script>
+  </head>
+  <body>
+    <div id="canvas-frame"></div>
+    <!-- canvas要素を配置するdiv要素 -->
+    <!-- <a href="" id="pictureDownload" download="">画像ダウンロード</a> -->
+  </body>
+</html>
